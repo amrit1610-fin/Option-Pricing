@@ -1,7 +1,6 @@
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
-from data.market_data import MarketData
 
 
 class BinomialTreeEngine:
@@ -10,7 +9,7 @@ class BinomialTreeEngine:
     Supports both European and American options for calls and puts.
     """
 
-    def __init__(self, market_data: MarketData, N: int = 500):
+    def __init__(self, market_data, N: int = 500):
         self.market_data = market_data
         self.N = N
 
@@ -32,6 +31,7 @@ class BinomialTreeEngine:
         r = self.market_data.risk_free_rate
         q = self.market_data.dividend_yield
         sigma = self.market_data.volatility
+        option_type = self.market_data.option_type
 
         # 1. Tree parameters
         dt = T / self.N
@@ -64,7 +64,7 @@ class BinomialTreeEngine:
                 if is_american:
                     # Intrinsic value upon immediate exercise
                     spot_now = stock_tree[j, i]
-                    intrinsic_val = spot_now - K if self.market_data.option_type.lower() == "call" else K - spot_now
+                    intrinsic_val = spot_now - K if option_type.lower() == "call" else K - spot_now
                     option_tree[j, i] = max(expected_val, intrinsic_val, 0.0)
                 else:
                     option_tree[j, i] = expected_val
@@ -77,6 +77,7 @@ class BinomialTreeEngine:
         """
         _, option_tree = self._build_trees()
         return float(option_tree[0, 0])
+
 
     def plot_binomial_tree(self, display_steps: int = None):
         """
