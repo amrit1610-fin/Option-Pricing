@@ -1,21 +1,13 @@
 import numpy as np
-import copy
 
-from models.base import PricingEngine
-from core.instruments import Option
-from core.market_data import MarketData
-
-class HestonFourierEngine(PricingEngine):
+class HestonFourierEngine:
     """
-    Fourier transform pricing for Heston Model using the Carr-Madan (1999) FFT method.
+    Fourier transform pricing for the Heston Model using the Carr-Madan (1999) FFT method.
     Fast and accurate, but restricted to European options.
     """
-    
-    SUPPORTED_STYLES = ['European']
-    SUPPORTED_EXOTICS = ['None']
 
-    def __init__(self, market_data: MarketData, v0: float, rho: float, kappa: float, theta: float, sigma_v: float):
-        super().__init__(market_data)
+    def __init__(self, market_data, v0: float, rho: float, kappa: float, theta: float, sigma_v: float):
+        self.market_data = market_data
         self.v0 = v0
         self.rho = rho
         self.kappa = kappa
@@ -48,7 +40,7 @@ class HestonFourierEngine(PricingEngine):
         
         return np.exp(C + D * self.v0 + self.i * u * self.x0)
 
-    def fft_calls(self, N: int = 4096, eta: float = 0.25, alpha: float = 1.5):
+    def _fft_calls(self, N: int = 4096, eta: float = 0.25, alpha: float = 1.5):
         """Computes call prices over a grid of strikes using FFT."""
         r = self.market_data.risk_free_rate
         T = self.market_data.time_to_expiry
@@ -80,19 +72,47 @@ class HestonFourierEngine(PricingEngine):
         order = np.argsort(K)
         return K[order], np.maximum(calls[order], 0.0)
 
+    def calculate_price(self, **kwargs) -> float:
+        """
+        Extracts the precise price for the specified strike using linear interpolation on the FFT grid.
+        Includes put-call parity conversion if the option is a put.
+        """
+        target_K = self.market_data.strike_price
+        K_grid, C_grid = self._fft_calls()
+        
+        # Linear interpolation for the Call price
+        if target_K <= K_grid[0]:
+            call_price = C_grid[0]
+        elif target_K >= K_grid[-1]:
+            call_price = C_grid[-1]
+        else:
+            idx = np.searchsorted(K_grid, target_K)
+            x0, x1 = K_grid[idx-1], K_grid[idx]
+            y0, y1 = C_grid[idx-1], C_grid[idx]
+            call_price = y0 + (y1 - y0) * (target_K - x0) / (x1 - x0)
+
+        # Return call directly, or convert to put via Put-Call Parity
+        if self.market_data.option_type.lower() == 'call':
+            return float(call_price)
+        elif self.market_data.option_type.lower() == 'put':
+            S = self.market_data.spot_price
+            K = self.market_data.strike_price
+            T = self.market_data.time_to_expiry
+            r = self.market_data.risk_free_rate
+            q = self.market_data.dividend_yield
+            
+            put_price = call_price - S * np.exp(-q * T) + K * np.exp(-r * T)
+            return float(max(put_price, 0.0))
+        else:
+            raise ValueError("Option type must be 'call' or 'put'.")
 
 
-class HestonMonteCarloEngine(PricingEngine):
+class HestonMonteCarloEngine:
     """
     Monte Carlo simulation of the Heston Model using the Full Truncation scheme.
-    Because it simulates paths, it naturally supports Path-Dependent Exotics.
     """
-    
-    SUPPORTED_STYLES = ['European']
-    SUPPORTED_EXOTICS = ['None', 'Asian', 'Barrier']
-
-    def __init__(self, market_data: MarketData, v0: float, rho: float, kappa: float, theta: float, sigma_v: float, steps: int = 100, paths: int = 10000):
-        super().__init__(market_data)
+    def __init__(self, market_data, v0: float, rho: float, kappa: float, theta: float, sigma_v: float, steps: int = 100, paths: int = 10000):
+        self.market_data = market_data
         self.v0 = v0
         self.rho = rho
         self.kappa = kappa
@@ -131,20 +151,27 @@ class HestonMonteCarloEngine(PricingEngine):
 
         return S
 
-    def calculate_price(self, option: Option, seed: int = None, return_se: bool = False):
+    def calculate_price(self, **kwargs) -> float:
+        """
+        Executes the pricing. Compatible with the NumericalGreeks engine (listens for 'seed').
+        """
+        seed = kwargs.get('seed', None)
         paths = self._generate_paths(seed)
         
-        # Object-Oriented magic: The Option handles its own payoff (Asian, Barrier, etc.)
-        simulated_payoffs = option.get_payoff(paths)
+        # Calculate terminal payoffs directly from MarketData
+        terminal_prices = paths[:, -1]
+        K = self.market_data.strike_price
+        
+        if self.market_data.option_type.lower() == 'call':
+            simulated_payoffs = np.maximum(terminal_prices - K, 0.0)
+        elif self.market_data.option_type.lower() == 'put':
+            simulated_payoffs = np.maximum(K - terminal_prices, 0.0)
+        else:
+            raise ValueError("Option type must be 'call' or 'put'.")
         
         r = self.market_data.risk_free_rate
         T = self.market_data.time_to_expiry
         discount_factor = np.exp(-r * T)
         
         discounted_payoffs = discount_factor * simulated_payoffs
-        price = np.mean(discounted_payoffs)
-        se = np.std(discounted_payoffs) / np.sqrt(self.paths)
-        
-        return (price, se) if return_se else price
-
-    
+        return float(np.mean(discounted_payoffs))
