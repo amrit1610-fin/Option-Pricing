@@ -17,3 +17,4 @@ class MarketDataLayout:
     exercise_style: str               # 'european' or 'american'
     dividend_yield: float = 0.0       # Default to 0.0 if not provided
     volatility: Optional[float] = None # Optional: Used for Black-Scholes, unused in Heston
+    market_price: Optional[float] = None

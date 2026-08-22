@@ -46,23 +46,40 @@ class MarketData:
 
         # 6. Get Implied Volatility from Option Chain
         implied_vol = 0.20 # fallback
+        market_price = 0.0 # fallback
+        
         try:
             chain = t.option_chain(expiration_date)
             df = chain.calls if option_type.lower() == "call" else chain.puts
-            # Find the closest strike to get the market implied volatility
+            
+            # Find the exact or closest strike
             closest_row = df.iloc[(df['strike'] - strike_price).abs().argsort()[:1]]
+            
             if not closest_row.empty:
                 implied_vol = float(closest_row['impliedVolatility'].iloc[0])
+                
+                # Calculate True Market Price
+                bid = float(closest_row['bid'].iloc[0])
+                ask = float(closest_row['ask'].iloc[0])
+                last_price = float(closest_row['lastPrice'].iloc[0])
+                
+                # Use mid-price if bid/ask exists, otherwise use last traded price
+                if bid > 0 and ask > 0:
+                    market_price = (bid + ask) / 2.0
+                else:
+                    market_price = last_price
+                    
         except Exception:
             pass
 
         return MarketDataLayout(
-            spot_price=float(spot_price),
+            spot_price=spot_price,
             strike_price=strike_price,
             risk_free_rate=r_rate,
             time_to_expiry=time_to_expiry,
             option_type=option_type.lower(),
             exercise_style=exercise_style,
             dividend_yield=div_yield,
-            volatility=implied_vol
+            volatility=implied_vol,
+            market_price=market_price
         )
