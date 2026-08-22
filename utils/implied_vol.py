@@ -21,11 +21,10 @@ class ImpliedVolatility:
             return theoretical_price - market_price
 
         try:
-            # brentq searches for the sigma that makes (theoretical_price - market_price) == 0
             implied_vol = brentq(objective_function, a=1e-4, b=5.0, xtol=1e-5, maxiter=100)
         except ValueError:
-            # Returns 0.0 if the market price violates arbitrage bounds (e.g., price is lower than intrinsic value)
-            implied_vol = 0.0
+            # FIX: Return a tiny non-zero number instead of 0.0 to prevent division by zero
+            implied_vol = 1e-4
             
         # Restore the engine to its original state so we don't cause side effects
         md.volatility = original_vol 

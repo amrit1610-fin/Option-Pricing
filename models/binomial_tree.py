@@ -30,7 +30,7 @@ class BinomialTreeEngine:
         T = self.market_data.time_to_expiry
         r = self.market_data.risk_free_rate
         q = self.market_data.dividend_yield
-        sigma = self.market_data.volatility
+        sigma = max(self.market_data.volatility, 1e-8)
         option_type = self.market_data.option_type
 
         # 1. Tree parameters
