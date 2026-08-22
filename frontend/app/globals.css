@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+@theme {
+  --color-term-bg: #000000;
+  --color-term-panel: #0A0A0A;
+  --color-term-amber: #FFB000;
+  --color-term-green: #00FF00;
+  --color-term-red: #FF3333;
+  --color-term-border: #333333;
+}
+
+body {
+  background-color: var(--color-term-bg);
+  color: var(--color-term-amber);
+  margin: 0;
+  overflow: hidden;
+  /* Forces a standard monospace font if Geist Mono isn't loaded */
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
