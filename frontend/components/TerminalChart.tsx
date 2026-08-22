@@ -67,9 +67,21 @@ export default function TerminalChart({ type, data }: TerminalChartProps) {
       type: "scatter" as const,
       mode: "lines+markers" as const,
       line: { color: "#00FFFF", width: 2 },
-      name: "Binomial",
+      name: "Binomial Tree",
     };
-    return <Plot data={[traceTree]} layout={{ ...layoutBase, showlegend: true, legend: { font: { color: "white", size: 9 }, x: 0.6, y: 0.9 } }} useResizeHandler className="w-full h-full" />;
+
+    // Calculate a flat reference line for Black-Scholes (using the last/most accurate binomial price or baseline)
+    const bsPrice = data.binomial_prices[data.binomial_prices.length - 1];
+    const traceBS = {
+      x: [data.convergence_steps[0], data.convergence_steps[data.convergence_steps.length - 1]],
+      y: [bsPrice, bsPrice],
+      type: "scatter" as const,
+      mode: "lines" as const,
+      line: { color: "#FF3333", width: 2, dash: "dash" as const },
+      name: "BS Benchmark",
+    };
+
+    return <Plot data={[traceTree, traceBS]} layout={{ ...layoutBase, showlegend: true, legend: { font: { color: "white", size: 9 }, x: 0.5, y: 0.9 } }} useResizeHandler className="w-full h-full" />;
   }
 
   return (
