@@ -209,7 +209,7 @@ export default function TerminalDashboard() {
             {['price', 'delta', 'gamma', 'theta', 'vega', 'rho'].map((metric, idx) => (
               <React.Fragment key={metric}>
                 <div className={`col-span-1 text-gray-400 uppercase border-r border-gray-800 pr-1 ${idx % 2 === 0 ? 'bg-gray-900' : ''}`}>{metric}</div>
-                {['Black-Scholes', 'Binomial Tree', 'Monte Carlo'].map((model) => (
+                {['BLACK-SCHOLES', 'BINOMIAL TREE', 'MONTE CARLO'].map((model) => (
                   <div key={`${model}-${metric}`} className={`col-span-1 text-right font-mono ${idx % 2 === 0 ? 'bg-gray-900' : ''} ${metric === 'price' ? 'text-term-green font-bold' : 'text-term-amber'}`}>
                     {data && data.results[model] ? data.results[model][metric as keyof typeof data.results[string]].toFixed(4) : "--"}
                   </div>
@@ -220,8 +220,8 @@ export default function TerminalDashboard() {
 
           <div className="text-[10px] text-gray-400 flex flex-col gap-1 mt-auto bg-black p-1 border border-gray-800">
             <span className="text-term-amber font-bold mb-1">REAL-WORLD SENSITIVITIES (BSM):</span>
-            {data && data.results['Black-Scholes'] ? (
-              getGreekInterpretations(data.results['Black-Scholes']).map((text, i) => (
+            {data && data.results['BLACK-SCHOLES'] ? (
+                getGreekInterpretations(data.results['BLACK-SCHOLES']).map((text, i) => (
                 <div key={i} className="leading-tight"><span className="text-white">&gt;</span> {text}</div>
               ))
             ) : (
