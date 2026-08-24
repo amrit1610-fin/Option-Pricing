@@ -16,7 +16,7 @@ app = FastAPI(title="Option Pricing Engine API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"], 
+    allow_origins=["*"], # The wildcard '*' allows requests from any domain (Vercel & Localhost)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
