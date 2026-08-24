@@ -1,3 +1,4 @@
+import requests
 import yfinance as yf
 from datetime import datetime, timezone
 from data.market_data_layout import MarketDataLayout
@@ -8,8 +9,16 @@ class MarketData:
     """
     KNOWN_EUROPEAN_INDICES = {"^SPX", "^NDX", "^RUT", "^DJI", "^VIX"}
 
-    def __init__(self, fallback_rate: float = 0.045):
-        self.fallback_rate = fallback_rate
+    def __init__(self):
+        # 1. Initialize a persistent web session
+        self.session = requests.Session()
+        
+        # 2. Spoof the User-Agent to bypass Yahoo Finance scraping blocks
+        self.session.headers.update({
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9"
+        })
 
     def get_market_data(
         self, ticker: str, expiration_date: str, strike_price: float, option_type: str
