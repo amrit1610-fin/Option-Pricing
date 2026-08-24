@@ -1,24 +1,13 @@
-import os
 import requests
 from datetime import datetime
-from typing import Optional
-
 from data.market_data_layout import MarketDataLayout
 
 class MarketData:
     def __init__(self):
-        # Load API credentials from environment variables
-        self.api_key = os.getenv("ALPACA_API_KEY")
-        self.secret_key = os.getenv("ALPACA_SECRET_KEY")
-        self.headers = {
-            "APCA-API-KEY-ID": self.api_key or "",
-            "APCA-API-SECRET-KEY": self.secret_key or "",
-            "Accept": "application/json"
-        }
-        self.base_url = "https://data.alpaca.markets"
+        self.base_url = "https://api.marketdata.app/v1/options/quotes"
 
     def _generate_occ_symbol(self, ticker: str, expiration_date: str, strike_price: float, option_type: str) -> str:
-        """Constructs standard OCC symbol: [Ticker 6-char][YYMMDD][C/P][Strike*1000 8-digit]"""
+        """Constructs standard OCC symbol: e.g., SPXW260828P05500000"""
         clean_ticker = ticker.upper().replace("^", "")
         ticker_padded = clean_ticker.ljust(6)
         
@@ -30,67 +19,46 @@ class MarketData:
         return f"{ticker_padded}{date_str}{call_put}{strike_str}"
 
     def get_market_data(self, ticker: str, expiration_date: str, strike_price: float, option_type: str) -> MarketDataLayout:
-        if not self.api_key or not self.secret_key:
-            raise ValueError("SYSTEM ERROR: Alpaca API Keys (ALPACA_API_KEY, ALPACA_SECRET_KEY) are missing in Render environment variables.")
-
         clean_ticker = ticker.upper().replace("^", "")
-        equity_proxy = "SPY" if clean_ticker == "SPX" else "QQQ" if clean_ticker == "NDX" else clean_ticker
-
+        occ_symbol = self._generate_occ_symbol(clean_ticker, expiration_date, strike_price, option_type)
+        
         try:
-            # 1. Underlying Spot Price
-            spot_url = f"{self.base_url}/v2/stocks/{equity_proxy}/trades/latest"
-            spot_res = requests.get(spot_url, headers=self.headers)
+            # Hit the MarketData API (No key required for <100 requests/day)
+            url = f"{self.base_url}/{occ_symbol}/"
+            response = requests.get(url)
             
-            if spot_res.status_code == 401:
-                raise ValueError("Alpaca API Keys are invalid. Check Render Environment Variables.")
-            elif spot_res.status_code == 429:
-                raise ValueError("Alpaca API Rate Limit Hit. Please wait a moment.")
+            if response.status_code == 429:
+                raise ValueError("MarketData API Free Daily Limit Hit (100 requests).")
+            elif response.status_code != 200:
+                raise ValueError(f"Could not fetch data for {occ_symbol}. Contract may not exist.")
             
-            spot_data = spot_res.json()
-            if "trade" not in spot_data:
-                raise ValueError(f"Could not fetch spot price for {equity_proxy}.")
+            data = response.json()
             
-            spot_price = float(spot_data["trade"]["p"])
-            if clean_ticker == "SPX": 
-                spot_price *= 10.0
+            if data.get("s") != "ok":
+                raise ValueError("Invalid contract parameters or expired option.")
 
-            # 2. Risk-Free Rate
-            risk_free_rate = 0.05
-
-            # 3. Options Data & Mid-Price
-            occ_symbol = self._generate_occ_symbol(clean_ticker, expiration_date, strike_price, option_type)
-            opt_url = f"{self.base_url}/v1beta1/options/quotes/latest?symbols={occ_symbol}"
-            opt_res = requests.get(opt_url, headers=self.headers)
+            # Extract pricing data
+            spot_price = float(data.get("underlyingPrice", [0])[0])
+            bid = float(data.get("bid", [0])[0])
+            ask = float(data.get("ask", [0])[0])
+            market_price = (bid + ask) / 2.0 if bid and ask else (bid or ask or 0.0)
             
-            market_price = 0.0
-            volatility = 0.20  # Base initial estimate; IV solver refines this
-            
-            if opt_res.status_code == 200:
-                opt_data = opt_res.json()
-                if "quotes" in opt_data and occ_symbol in opt_data["quotes"]:
-                    quote = opt_data["quotes"][occ_symbol]
-                    bid = float(quote.get("bp", 0.0))
-                    ask = float(quote.get("ap", 0.0))
-                    
-                    if bid > 0 and ask > 0:
-                        market_price = (bid + ask) / 2.0
-                    elif bid > 0 or ask > 0:
-                        market_price = bid if bid > 0 else ask
+            # API provides IV, but we let our backend recalculate it for precision
+            volatility = 0.20 
 
-            # 4. Time to Expiry
+            # Time to Expiry
             exp_date = datetime.strptime(expiration_date, "%Y-%m-%d")
             days_to_expiry = (exp_date - datetime.now()).days
             time_to_expiry = max(days_to_expiry / 365.0, 0.001)
 
-            # 5. Exercise Style
-            european_indices = ["SPX", "SPXW", "XSP", "NDX", "RUT", "VIX", "DJX", "XEO", "MNX"]
+            # Exercise Style
+            european_indices = ["SPX", "SPXW", "XSP", "NDX", "RUT", "VIX"]
             exercise_style = "european" if clean_ticker in european_indices else "american"
 
-            # 6. Return standard MarketDataLayout
             return MarketDataLayout(
                 spot_price=spot_price,
                 strike_price=strike_price,
-                risk_free_rate=risk_free_rate,
+                risk_free_rate=0.05,
                 time_to_expiry=time_to_expiry,
                 option_type=option_type.lower(),
                 exercise_style=exercise_style,
@@ -102,4 +70,4 @@ class MarketData:
         except ValueError as ve:
             raise ve
         except Exception as e:
-            raise ValueError(f"Alpaca API Error: {str(e)}")
+            raise ValueError(f"MarketData API Error: {str(e)}")

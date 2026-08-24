@@ -219,9 +219,9 @@ export default function TerminalDashboard() {
           </div>
 
           <div className="text-[10px] text-gray-400 flex flex-col gap-1 mt-auto bg-black p-1 border border-gray-800">
-            <span className="text-term-amber font-bold mb-1">REAL-WORLD SENSITIVITIES (BSM):</span>
-            {data && data.results['BLACK-SCHOLES'] ? (
-                getGreekInterpretations(data.results['BLACK-SCHOLES']).map((text, i) => (
+            <span className="text-term-amber font-bold mb-1">REAL-WORLD SENSITIVITIES:</span>
+            {data ? (
+              getGreekInterpretations(data.results['BLACK-SCHOLES'] || data.results['BINOMIAL TREE'] || data.results['MONTE CARLO']).map((text, i) => (
                 <div key={i} className="leading-tight"><span className="text-white">&gt;</span> {text}</div>
               ))
             ) : (

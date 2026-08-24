@@ -3,7 +3,6 @@
 import React from "react";
 import dynamic from "next/dynamic";
 
-// Dynamically import Plotly to avoid Next.js server-side rendering issues with the window object
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false, loading: () => <div className="text-gray-600 text-xs italic">Loading visualization module...</div> });
 
 interface TerminalChartProps {
@@ -12,22 +11,27 @@ interface TerminalChartProps {
 }
 
 export default function TerminalChart({ type, data }: TerminalChartProps) {
-  if (!data || !data[type]) {
-    return <div className="flex h-full w-full items-center justify-center text-gray-600 text-xs italic">Awaiting execution data...</div>;
+  // If no chart data object exists at all
+  if (!data) {
+    return <div className="flex h-full w-full items-center justify-center text-gray-600 text-sm italic">Awaiting execution data...</div>;
   }
 
-  const chartData = data[type];
+  // Handle both UPPERCASE (React state) and lowercase (Python backend) keys
+  const chartData = data[type] || data[type.toLowerCase()];
 
-  // Bloomberg-style dark theme template for Plotly
+  if (!chartData) {
+     return <div className="flex h-full w-full items-center justify-center text-term-red text-sm italic">Chart data for {type} not found in backend response.</div>;
+  }
+
   const layoutTemplate = {
     paper_bgcolor: "transparent",
     plot_bgcolor: "transparent",
-    font: { color: "#9ca3af", family: "monospace", size: 10 },
+    font: { color: "#9ca3af", family: "monospace", size: 12 }, // Increased font size here too
     margin: { t: 10, r: 10, b: 25, l: 40 },
     xaxis: { 
       gridcolor: "#374151", 
       zerolinecolor: "#4b5563",
-      tickfont: { color: "#d97706" } // Amber ticks
+      tickfont: { color: "#d97706" }
     },
     yaxis: { 
       gridcolor: "#374151", 
