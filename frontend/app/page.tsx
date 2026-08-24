@@ -22,13 +22,7 @@ interface PricingResponse {
     vega: number;
     rho: number;
   }>;
-  charts?: {
-    strikes: number[];
-    deltas: number[];
-    convergence_steps: number[];
-    binomial_prices: number[];
-    mc_paths: number[][];
-  };
+  charts?: any;
 }
 
 export default function TerminalDashboard() {
@@ -40,11 +34,11 @@ export default function TerminalDashboard() {
   const [loading, setLoading] = useState<boolean>(false);
   const [data, setData] = useState<PricingResponse | null>(null);
   
-  // Chart Tabs State
-  const [activeTab, setActiveTab] = useState<"PAYOFF" | "CONVERGENCE" | "GREEKS" | "PATHS">("PAYOFF");
+  // Includes both PAYOFF and PROBABILITY now
+  const [activeTab, setActiveTab] = useState<"PAYOFF" | "PROBABILITY" | "CONVERGENCE" | "GREEKS" | "PATHS">("PAYOFF");
 
   const [logs, setLogs] = useState<string[]>([
-    "[SYS] Bloomberg-style Quantitative Terminal initialized.",
+    "[SYS] Pricing Terminal initialized.",
     "[SYS] Auto-Routing Engine Active. Press <EXECUTE>.",
   ]);
 
@@ -61,7 +55,10 @@ export default function TerminalDashboard() {
     addLog(`Initiating calculation for ${ticker} | Strike: ${strike}`);
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/price", {
+      // Uses the live URL in production, and localhost during local development
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
+      const response = await fetch(`${API_URL}/api/price`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -90,123 +87,54 @@ export default function TerminalDashboard() {
 
   return (
     <div className="h-screen w-screen bg-term-bg text-term-amber font-mono p-1 flex flex-col select-none">
-      {/* Top Command Bar */}
       <form
         onSubmit={handlePriceCalculation}
         className="h-10 border border-term-border bg-term-panel flex items-center px-2 text-xs gap-3 mb-1"
       >
         <span className="text-gray-500 font-bold">CMD&gt;</span>
-
         <div className="flex items-center gap-1">
           <span className="text-gray-400">TICKER:</span>
-          <input
-            type="text"
-            value={ticker}
-            onChange={(e) => setTicker(e.target.value.toUpperCase())}
-            className="bg-black border border-term-border px-1 text-term-amber uppercase w-20 outline-none"
-          />
+          <input type="text" value={ticker} onChange={(e) => setTicker(e.target.value.toUpperCase())} className="bg-black border border-term-border px-1 text-term-amber uppercase w-20 outline-none" />
         </div>
-
         <div className="flex items-center gap-1">
           <span className="text-gray-400">EXPIRY:</span>
-          <input
-            type="text"
-            value={expiry}
-            onChange={(e) => setExpiry(e.target.value)}
-            className="bg-black border border-term-border px-1 text-term-amber w-28 outline-none"
-            placeholder="YYYY-MM-DD"
-          />
+          <input type="text" value={expiry} onChange={(e) => setExpiry(e.target.value)} className="bg-black border border-term-border px-1 text-term-amber w-28 outline-none" placeholder="YYYY-MM-DD" />
         </div>
-
         <div className="flex items-center gap-1">
           <span className="text-gray-400">STRIKE:</span>
-          <input
-            type="number"
-            value={strike}
-            onChange={(e) => setStrike(parseFloat(e.target.value))}
-            className="bg-black border border-term-border px-1 text-term-amber w-24 outline-none"
-          />
+          <input type="number" value={strike} onChange={(e) => setStrike(parseFloat(e.target.value))} className="bg-black border border-term-border px-1 text-term-amber w-24 outline-none" />
         </div>
-
         <div className="flex items-center gap-1">
           <span className="text-gray-400">TYPE:</span>
-          <select
-            value={optionType}
-            onChange={(e) => setOptionType(e.target.value)}
-            className="bg-black border border-term-border px-1 text-term-amber outline-none"
-          >
+          <select value={optionType} onChange={(e) => setOptionType(e.target.value)} className="bg-black border border-term-border px-1 text-term-amber outline-none">
             <option value="put">PUT</option>
             <option value="call">CALL</option>
           </select>
         </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="bg-term-amber text-black font-bold px-3 py-0.5 hover:bg-yellow-400 disabled:opacity-50"
-        >
+        <button type="submit" disabled={loading} className="bg-term-amber text-black font-bold px-3 py-0.5 hover:bg-yellow-400 disabled:opacity-50">
           {loading ? "CALCULATING..." : "<EXECUTE>"}
         </button>
-
         <span className="ml-auto text-term-green flex items-center gap-1 text-[11px]">
           <span className="inline-block w-2 h-2 rounded-full bg-term-green animate-pulse"></span>
           ONLINE
         </span>
       </form>
 
-      {/* 4-Pane Terminal Grid */}
       <div className="grid grid-cols-2 grid-rows-2 gap-1 flex-grow overflow-hidden">
-        
-        {/* Pane 1: Contract Details */}
         <div className="border border-term-border bg-term-panel p-2 flex flex-col">
-          <h2 className="text-white text-xs mb-2 border-b border-term-border pb-1 font-bold">
-            DES &lt;GO&gt; - CONTRACT &amp; MARKET SPECIFICATIONS
-          </h2>
+          <h2 className="text-white text-xs mb-2 border-b border-term-border pb-1 font-bold">DES &lt;GO&gt; - CONTRACT &amp; MARKET SPECIFICATIONS</h2>
           <div className="flex flex-col gap-1 text-xs justify-around flex-grow">
-            <div className="flex justify-between border-b border-gray-900 pb-0.5">
-              <span className="text-gray-400">EXERCISE STYLE:</span>
-              <span className="text-term-red font-bold">
-                {data ? data.contract_details.exercise_style : "--"}
-              </span>
-            </div>
-            <div className="flex justify-between border-b border-gray-900 pb-0.5">
-              <span className="text-gray-400">UNDERLYING SPOT:</span>
-              <span className="text-term-amber">
-                {data ? `$${data.contract_details.spot_price.toFixed(2)}` : "--"}
-              </span>
-            </div>
-            <div className="flex justify-between border-b border-gray-900 pb-0.5">
-              <span className="text-gray-400">TARGET STRIKE:</span>
-              <span className="text-term-amber">
-                {data ? `$${data.contract_details.strike_price.toFixed(2)}` : "--"}
-              </span>
-            </div>
-            <div className="flex justify-between border-b border-gray-900 pb-0.5">
-              <span className="text-gray-400">TIME TO EXPIRY (YRS):</span>
-              <span className="text-term-amber">
-                {data ? data.contract_details.time_to_expiry.toFixed(4) : "--"}
-              </span>
-            </div>
-            <div className="flex justify-between border-b border-gray-900 pb-0.5">
-              <span className="text-gray-400">MARKET MID-PRICE:</span>
-              <span className="text-white font-bold">
-                {data ? `$${data.contract_details.market_price.toFixed(2)}` : "--"}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">CALCULATED TRUE IV:</span>
-              <span className="text-term-green font-bold">
-                {data ? `${(data.contract_details.implied_volatility * 100).toFixed(2)}%` : "--"}
-              </span>
-            </div>
+            <div className="flex justify-between border-b border-gray-900 pb-0.5"><span className="text-gray-400">EXERCISE STYLE:</span><span className="text-term-red font-bold">{data ? data.contract_details.exercise_style : "--"}</span></div>
+            <div className="flex justify-between border-b border-gray-900 pb-0.5"><span className="text-gray-400">UNDERLYING SPOT:</span><span className="text-term-amber">{data ? `$${data.contract_details.spot_price.toFixed(2)}` : "--"}</span></div>
+            <div className="flex justify-between border-b border-gray-900 pb-0.5"><span className="text-gray-400">TARGET STRIKE:</span><span className="text-term-amber">{data ? `$${data.contract_details.strike_price.toFixed(2)}` : "--"}</span></div>
+            <div className="flex justify-between border-b border-gray-900 pb-0.5"><span className="text-gray-400">TIME TO EXPIRY (YRS):</span><span className="text-term-amber">{data ? data.contract_details.time_to_expiry.toFixed(4) : "--"}</span></div>
+            <div className="flex justify-between border-b border-gray-900 pb-0.5"><span className="text-gray-400">MARKET MID-PRICE:</span><span className="text-white font-bold">{data ? `$${data.contract_details.market_price.toFixed(2)}` : "--"}</span></div>
+            <div className="flex justify-between"><span className="text-gray-400">CALCULATED TRUE IV:</span><span className="text-term-green font-bold">{data ? `${(data.contract_details.implied_volatility * 100).toFixed(2)}%` : "--"}</span></div>
           </div>
         </div>
 
-        {/* Pane 2: Greeks & Valuation Output (DYNAMIC) */}
         <div className="border border-term-border bg-term-panel p-2 flex flex-col overflow-y-auto">
-          <h2 className="text-white text-xs mb-2 border-b border-term-border pb-1 font-bold">
-            PRC &lt;GO&gt; - VALUATION &amp; RISK SENSITIVITIES
-          </h2>
+          <h2 className="text-white text-xs mb-2 border-b border-term-border pb-1 font-bold">PRC &lt;GO&gt; - VALUATION &amp; RISK SENSITIVITIES</h2>
           <div className="grid grid-cols-2 gap-4 text-xs">
             {data ? (
               Object.entries(data.results).map(([modelName, metrics]) => (
@@ -217,6 +145,7 @@ export default function TerminalDashboard() {
                   <div className="flex justify-between"><span>GAMMA</span><span className="text-term-amber">{metrics.gamma.toFixed(4)}</span></div>
                   <div className="flex justify-between"><span>THETA</span><span className="text-term-red">{metrics.theta.toFixed(4)}</span></div>
                   <div className="flex justify-between"><span>VEGA</span><span className="text-term-amber">{metrics.vega.toFixed(4)}</span></div>
+                  <div className="flex justify-between"><span>RHO</span><span className="text-term-amber">{metrics.rho.toFixed(4)}</span></div>
                 </div>
               ))
             ) : (
@@ -225,12 +154,11 @@ export default function TerminalDashboard() {
           </div>
         </div>
 
-        {/* Pane 3: Plotly Visualization with Tabs */}
         <div className="border border-term-border bg-term-panel p-2 flex flex-col">
           <div className="flex justify-between items-center mb-2 border-b border-term-border pb-1">
             <h2 className="text-white text-xs font-bold">GRPH &lt;GO&gt; - VISUALIZATION</h2>
             <div className="flex gap-3 text-[10px]">
-              {(["PAYOFF", "CONVERGENCE", "GREEKS", "PATHS"] as const).map((tab) => (
+              {(["PAYOFF", "PROBABILITY", "CONVERGENCE", "GREEKS", "PATHS"] as const).map((tab) => (
                 <button 
                   key={tab} 
                   onClick={() => setActiveTab(tab)}
@@ -246,36 +174,21 @@ export default function TerminalDashboard() {
           </div>
         </div>
 
-        {/* Pane 4: System Console Logs */}
         <div className="border border-term-border bg-term-panel p-2 flex flex-col">
           <div className="flex justify-between items-center mb-2 border-b border-term-border pb-1">
             <h2 className="text-white text-xs font-bold">SYS &lt;GO&gt; - EXECUTION LOGS</h2>
-            <button onClick={clearLogs} className="text-term-red hover:bg-term-red hover:text-black border border-term-red px-1 text-[10px] transition-colors">
-              [CLEAR]
-            </button>
+            <button onClick={clearLogs} className="text-term-red hover:bg-term-red hover:text-black border border-term-red px-1 text-[10px] transition-colors">[CLEAR]</button>
           </div>
           <div className="text-[11px] text-gray-400 flex flex-col gap-1 overflow-y-auto min-h-0 flex-grow">
             {logs.length === 0 ? (
               <span className="text-gray-600 italic">Logs cleared...</span>
             ) : (
               logs.map((log, idx) => (
-                <p
-                  key={idx}
-                  className={
-                    log.includes("[SUCCESS]")
-                      ? "text-term-green"
-                      : log.includes("[ERROR]")
-                      ? "text-term-red"
-                      : "text-gray-400"
-                  }
-                >
-                  {log}
-                </p>
+                <p key={idx} className={log.includes("[SUCCESS]") ? "text-term-green" : log.includes("[ERROR]") ? "text-term-red" : "text-gray-400"}>{log}</p>
               ))
             )}
           </div>
         </div>
-
       </div>
     </div>
   );

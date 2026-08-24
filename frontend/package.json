@@ -1,5 +1,5 @@
 {
-  "name": "bloomberg-pricing-terminal",
+  "name": "option-pricing-terminal",
   "version": "1.0.0",
   "scripts": {
     "dev": "next dev",
