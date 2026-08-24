@@ -1,8 +1,0 @@
-fastapi
-uvicorn
-yfinance
-numpy
-scipy
-pydantic
-networkx
-matplotlib

@@ -1,189 +1,243 @@
-# Quantitative Option Pricing & Risk Analytics Terminal
+# 📈 Quantitative Options Pricing & Risk Terminal
 
-[![Python](https://img.shields.io/badge/Python-3.10%2B-blue?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
-[![Next.js](https://img.shields.io/badge/Frontend-Next.js%2014-black?style=flat-square&logo=next.js)](https://nextjs.org/)
-[![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
-[![Deployment](https://img.shields.io/badge/Deployed-Vercel%20%26%20Render-blue?style=flat-square)](https://vercel.com)
+An institutional-grade derivatives pricing, volatility calibration, and risk management terminal written in Python. The engine ingests live market options chains via `yfinance`, calibrates true implied volatility using root-finding algorithms, executes multiple valuation models (Analytical, Lattice, and Stochastic Simulation), calculates numerical and analytical Greeks via finite difference bump-and-revalue methods, and renders an interactive multi-panel Plotly risk dashboard.
 
-
-An institutional-grade quantitative finance web terminal inspired by Bloomberg DES/PRC interfaces. The engine prices European and American equity/index options across multiple mathematical frameworks, solves for implied volatility numerically, and calculates full first- and second-order risk sensitivities (Greeks).
-
-**Visit** : https://option-pricing-terminal.vercel.app/
 ---
 
-## Architecture Overview
-
-The system is architected as a decoupled, high-performance quantitative pipeline:
+## 🏛️ System Architecture
 
 
 ```
 
-┌─────────────────────────────────────────────────────────────┐
-│                    Next.js (Vercel)                         │
-│   • Bloomberg CRT UI Theme (Tailwind CSS)                   │
-│   • Dynamic Execution Logging System                        │
-│   • Interactive Plotly Financial Visualizations             │
-└──────────────────────────────┬──────────────────────────────┘
-                               │ HTTPS / JSON API
-┌──────────────────────────────▼──────────────────────────────┐
-│                    FastAPI (Render)                         │
-│   • Auto-Routing Valuation Engine                           │
-│   • Numerical Greeks Engine (Bump & Revalue)                │
-│   • Alpaca Market Data Provider (OCC Symbol Encoding)       │
-└──────────────────────────────┬──────────────────────────────┘
-            ┌──────────────────┼──────────────────┐
-            ▼                  ▼                  ▼
-            [Black-Scholes]   [Binomial Tree]    [Monte Carlo]
-            (European Closed) (American CRR/JR)  (Stochastic GBM)
+```
+                              +-----------------------+
+                              |   Yahoo Finance API   |
+                              +-----------+-----------+
+                                          |
+                                          v
+                              +-----------------------+
+                              | LiveMarketDataExtractor|
+                              +-----------+-----------+
+                                          |
+                                          v
+                              +-----------------------+
+                              |   MarketDataLayout    | <---+ (Decoupled In-Memory Container)
+                              +-----------+-----------+
+                                          |
+                  +-----------------------+-----------------------+
+                  |                                               |
+                  v                                               v
+    +---------------------------+                   +---------------------------+
+    | Implied Volatility Solver |                   |    Pricing Engines Core   |
+    |   (Brent's Root-Finding)  |                   +-------------+-------------+
+    +-------------+-------------+                                 |
+                  | (Calibrated IV)                               |
+                  +-----------------------------------------------+
+                                          |
+                  +-----------------------+-----------------------+
+                  |                       |                       |
+                  v                       v                       v
+        +-------------------+   +-------------------+   +-------------------+
+        |   Black-Scholes   |   |   Binomial Tree   |   |    Monte Carlo    |
+        |     Engine        |   |    (CRR Lattice)  |   |     (GBM Paths)   |
+        +---------+---------+   +---------+---------+   +---------+---------+
+                  |                       |                       |
+                  | (Analytical)          | (Finite Difference)   | (Finite Difference)
+                  v                       v                       v
+        +-------------------------------------------------------------------+
+        |               Numerical Greeks & Sensitivity Matrix               |
+        |                (Delta, Gamma, Vega, Theta, Rho)                   |
+        +---------------------------------+---------------------------------+
+                                          |
+                                          v
+        +-------------------------------------------------------------------+
+        |                5-Panel Interactive Plotly Dashboard               |
+        |     [Payoff | PDF | Full Greeks | MC Paths | Model Convergence]   |
+        +-------------------------------------------------------------------+
 
 ```
-
----
-
-## Core Features
-
-### 1. Multi-Model Valuation Engine
-* **Black-Scholes-Merton Engine:** Analytical closed-form pricing for European-style vanilla contracts.
-* **Binomial Tree Engine (CRR / Jarrow-Rudd):** Lattice model supporting backward induction for early exercise evaluation in American-style contracts.
-* **Monte Carlo Engine:** Geometric Brownian Motion (GBM) simulation running thousands of stochastic price paths with antithetic variance reduction and 95% confidence intervals.
-* **Automatic Exercise-Style Routing:** Automatically detects whether an underlying instrument is European-settled (e.g., `SPX`, `NDX`, `RUT`, `VIX`) or American-settled (e.g., `NVDA`, `AAPL`, `SPY`) and routes execution to valid engines.
-
-### 2. Risk Sensitivities (Numerical Greeks)
-Calculated via central finite-difference approximation (bump-and-revalue) across all active models:
-* **$\Delta$ (Delta):** $\frac{\partial V}{\partial S}$ — Directional spot sensitivity.
-* **$\Gamma$ (Gamma):** $\frac{\partial^2 V}{\partial S^2}$ — Second-order convexity.
-* **$\Theta$ (Theta):** $-\frac{\partial V}{\partial t}$ — Daily time decay.
-* **$\mathcal{V}$ (Vega):** $\frac{\partial V}{\partial \sigma}$ — Volatility sensitivity.
-* **$\rho$ (Rho):** $\frac{\partial V}{\partial r}$ — Interest rate sensitivity.
-
-### 3. Quantitative Visualizations
-* **Expiration Payoff Curve:** Terminal dollar payoff profile across varying spot prices.
-* **Probability Curve:** In-the-money (ITM) cumulative distribution profile across strike ranges.
-* **Greeks Profiling:** Multi-strike Greek sensitivity curves.
-* **Model Convergence:** Binomial tree step convergence and Monte Carlo confidence band progression against the Black-Scholes benchmark.
-* **Stochastic Paths:** Multi-trajectory Geometric Brownian Motion path simulation.
-
----
-
-## Tech Stack
-
-* **Frontend:** Next.js (App Router), React, Tailwind CSS, Plotly.js (`react-plotly.js`).
-* **Backend:** FastAPI, Uvicorn, NumPy, SciPy, Pydantic.
-* **Market Data API:** Alpaca Markets REST API (Paper Trading environment).
-* **Infrastructure:** Vercel (Frontend Hosting), Render (Python Container Hosting).
-
----
-
-## Project Structure
-
-
-```
-
-├── data/
-│   ├── market_data.py          # Alpaca API client & OCC symbol encoder
-│   └── market_data_layout.py   # Standardized dataclass container
-├── models/
-│   ├── black_scholes.py        # Analytical closed-form engine
-│   ├── binomial_tree.py        # Lattice early-exercise engine
-│   └── monte_carlo.py          # Stochastic path simulation engine
-├── utils/
-│   ├── greeks.py               # Numerical finite-difference solver
-│   └── implied_vol.py          # Newton-Raphson / Brent IV root-finder
-├── frontend/
-│   ├── app/
-│   │   ├── layout.tsx          # Terminal layout wrapper
-│   │   └── page.tsx            # Main dashboard UI
-│   ├── components/
-│   │   └── TerminalChart.tsx   # Dynamic Plotly visualization component
-│   └── package.json
-├── main.py                     # FastAPI application endpoints
-├── requirements.txt            # Python dependencies
-├── vercel.json                 # Vercel deployment configuration
-└── README.md
 
 ```
 
 ---
 
-## Local Development Setup
+## 🚀 Key Features & Quantitative Methodology
 
-### 1. Prerequisites
-* Python 3.10+
-* Node.js 18+ and npm
-* Free [Alpaca Markets](https://alpaca.markets/) account (Paper Trading API keys)
+### 1. Robust Live Market Ingestion & Standardization
+* Ingests real-time underlying spot prices, option chains, bid/ask spreads, and days-to-expiration (DTE).
+* Automatically classifies exercise style (`American` for single equities, `European` for cash-settled major indices like `^SPX`, `^NDX`, `^RUT`, `^VIX`).
+* Packs all attributes into a decoupled, strongly typed `MarketDataLayout` object for zero-side-effect parameter mutations during Greek evaluations.
 
-### 2. Backend Setup
+### 2. Numerical Implied Volatility Calibration
+* Replaces proprietary, black-box vendor IV estimates by calibrating directly against live option mid-market premiums:
+  $$\text{Mid Price} = \frac{\text{Bid} + \text{Ask}}{2}$$
+* Solves the inverse pricing problem using **Brent’s Method (`scipy.optimize.brentq`)**, finding the root $\sigma_{\text{implied}}$ such that:
+  $$f(\sigma) = V_{\text{model}}(S, K, T, r, q, \sigma) - P_{\text{market}} = 0$$
+
+### 3. Multi-Model Valuation Core
+* **Black-Scholes-Merton (BSM) Analytical Engine:** Closed-form benchmark pricing for European options with continuous dividend yields ($q$).
+* **Cox-Ross-Rubinstein (CRR) Binomial Lattice Engine:** Discrete multi-step lattice ($N=500$) supporting backward induction and early exercise boundaries for American options.
+* **Monte Carlo Simulation Engine:** Simulates vectorized Geometric Brownian Motion (GBM) paths with terminal payoff discounting:
+  $$S(t + \Delta t) = S(t) \exp\left(\left(r - q - \frac{1}{2}\sigma^2\right)\Delta t + \sigma \sqrt{\Delta t} \, Z\right), \quad Z \sim \mathcal{N}(0, 1)$$
+
+### 4. Dual-Mode Greek Risk Attribution
+* **Analytical Greeks:** Exact partial differential equations computed closed-form for BSM.
+* **Finite-Difference Numerical Greeks:** Universal bump-and-revalue engine calculating first and second-order sensitivities across discrete and stochastic models:
+  * **Delta ($\Delta$):** Central difference bump $\pm 0.1\%$ spot price.
+  * **Gamma ($\Gamma$):** Second-order central difference curvature.
+  * **Vega ($\mathcal{V}$):** $\pm 1.0\%$ implied volatility bump.
+  * **Theta ($\Theta$):** Forward time-decay translation (scaled to 1 calendar day).
+  * **Rho ($\rho$):** $\pm 1 \text{ bps}$ interest rate shock (scaled to $1.0\%$).
+* **Monte Carlo Seed Locking:** Fixed pseudo-random seeds (`seed=42`) across bump evaluations to eliminate Monte Carlo variance noise during numerical differentiation.
+
+### 5. Interactive Quantitative Risk Dashboard (Plotly)
+1. **Payoff Profile & Current Value Curve:** Expiration intrinsic value vs. current theoretical options valuation across spot ranges.
+2. **Lognormal Terminal PDF:** Probability density of underlying prices at expiry with target strike overlay.
+3. **Comprehensive Greeks Sensitivity:** Delta, Gamma (100x), Vega, Theta, and Rho plotted across the underlying spot spectrum.
+4. **Multi-Colored Monte Carlo Paths:** HSL-spectrum color-mapped asset trajectories highlighting distribution dispersion.
+5. **Numerical Convergence Asymptote:** Model convergence benchmarks comparing Binomial Lattice steps ($N \in [10, 200]$) and Monte Carlo sample sizes ($M \in [100, 10000]$) against the analytical BSM baseline.
+
+---
+
+## 📂 Project Structure
+
 ```bash
-# Clone the repository
+├── data/
+│   ├── __init__.py
+│   ├── market_data_laout.py    # MarketDataLayout container
+│   └── market_data.py          # yfinance data ingestion 
+├── models/
+│   ├── __init__.py
+│   ├── black_scholes.py        # Analytical BSM model & closed-form Greeks
+│   ├── binomial_tree.py        # CRR Binomial Tree lattice model (American/European)
+│   └── monte_carlo.py          # Vectorized GBM Monte Carlo simulation engine
+├── utils/
+│   ├── __init__.py
+│   ├── greeks.py               # Bump-and-revalue finite difference Greek calculator
+│   ├── implied_vol.py          # Brent's method root-finding IV calibrator
+│   └── charts.py               # 5-Panel interactive Plotly dashboard generator
+├── main.py                     # Primary terminal execution pipeline
+├── requirements.txt            # Environment dependencies
+└── README.md                   # Project documentation
+
+```
+
+---
+
+## 🛠️ Installation & Setup
+
+### Prerequisites
+
+* Python 3.9+ installed.
+
+### 1. Clone the Repository
+
+```bash
 git clone [https://github.com/amrit1610-fin/Option-Pricing-Terminal](https://github.com/amrit1610-fin/Option-Pricing-Terminal)
-cd option-pricing-terminal
+cd options-pricing-engine
 
-# Create and activate a virtual environment
+```
+
+### 2. Create and Activate a Virtual Environment
+
+```bash
+# macOS/Linux
+python3 -m venv venv
+source venv/bin/activate
+
+# Windows
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+venv\Scripts\activate
 
-# Install dependencies
+```
+
+### 3. Install Dependencies
+
+```bash
 pip install -r requirements.txt
 
-# Set your API credentials
-export ALPACA_API_KEY="your_alpaca_key_id"
-export ALPACA_SECRET_KEY="your_alpaca_secret_key"
-# On Windows PowerShell:
-# $env:ALPACA_API_KEY="your_alpaca_key_id"
-# $env:ALPACA_SECRET_KEY="your_alpaca_secret_key"
+```
 
-# Start the FastAPI server
-uvicorn main:app --reload --port 8000
+#### `requirements.txt`
+
+```text
+numpy
+scipy
+yfinance
+plotly
 
 ```
 
-### 3. Frontend Setup
+---
+
+## 💻 Execution & Sample Output
+
+Run the terminal pipeline from your console:
 
 ```bash
-# In a new terminal, navigate to the frontend directory
-cd frontend
-
-# Install node dependencies
-npm install
-
-# Configure local API endpoint
-echo "NEXT_PUBLIC_API_URL=[http://127.0.0.1:8000](http://127.0.0.1:8000)" > .env.local
-
-# Run the Next.js development server
-npm run dev
+python main.py
 
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser to access the terminal.
+### CLI Terminal Session
+
+```text
+======================================================================
+               INSTITUTIONAL OPTIONS PRICING TERMINAL                 
+======================================================================
+Enter Ticker (e.g., ^SPX, AAPL) [default: AAPL]: NVDA
+Enter Expiration (YYYY-MM-DD) [default: 2026-09-18]: 2026-09-18
+Enter Target Strike [default: 225.0]: 130.0
+Option Type (call/put) [default: call]: call
+
+[*] Fetching live market data for NVDA via yfinance...
+[*] Calibrating True Implied Volatility from Market Premium...
+
+----------------------------------------------------------------------
+                       CONTRACT SPECIFICATIONS                        
+----------------------------------------------------------------------
+ Underlying Spot: $128.50
+ Target Strike:   $130.00
+ Time to Expiry:  0.0658 Years
+ Market Premium:  $6.45
+ True Implied IV: 48.20%
+ Exercise Style:  AMERICAN
+----------------------------------------------------------------------
+
+[*] Initializing Pricing Engines...
+
+======================================================================
+                   VALUATION & SENSITIVITY MATRIX                     
+======================================================================
+METRIC          | BSM             | BINOMIAL        | MONTE CARLO    
+----------------------------------------------------------------------
+PRICE           | 6.4500          | 6.4582          | 6.4410         
+DELTA           | 0.5148          | 0.5160          | 0.5132         
+GAMMA           | 0.0245          | 0.0246          | 0.0241         
+THETA           | -0.0912         | -0.0908         | -0.0915        
+VEGA            | 0.1280          | 0.1278          | 0.1284         
+RHO             | 0.0385          | 0.0386          | 0.0381         
+
+[*] Generating Data Visualization Dashboard...
+[SUCCESS] Rendering interactive dashboard in browser...
+======================================================================
+
+```
 
 ---
 
-## Production Deployment
+## 📊 Quantitative Dashboard Visuals
 
-### Backend (Render)
+When execution finishes, an interactive dark-themed Plotly dashboard will automatically launch:
 
-1. Create a **New Web Service** linked to your GitHub repository.
-2. Set the **Build Command** to: `pip install -r requirements.txt`
-3. Set the **Start Command** to: `uvicorn main:app --host 0.0.0.0 --port $PORT`
-4. In **Environment Variables**, add:
-* `ALPACA_API_KEY`
-* `ALPACA_SECRET_KEY`
-* `PYTHON_VERSION` = `3.11.0`
-
-
-
-### Frontend (Vercel)
-
-1. Import the repository on [Vercel](https://vercel.com).
-2. Set the **Root Directory** to `frontend`.
-3. Set the **Framework Preset** to `Next.js`.
-4. Add the environment variable:
-* `NEXT_PUBLIC_API_URL` = `https://your-render-backend-url.onrender.com`
-
-
-5. Click **Deploy**.
+* **Top Left:** Expiration Payoff profile overlaid with current continuous valuation curve.
+* **Top Right:** Terminal probability distribution with underlying moneyness bounds.
+* **Middle Left:** Dynamic sensitivity curves across Spot ($S$) for all primary first- and second-order Greeks.
+* **Middle Right:** Vectorized Monte Carlo sample trajectories with distinct HSL color gradients.
+* **Bottom Panel:** Multi-tier model convergence analysis demonstrating algorithmic stability.
 
 ---
+
 
 ## Author:
 
