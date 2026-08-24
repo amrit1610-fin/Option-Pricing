@@ -30,10 +30,10 @@ The system is architected as a decoupled, high-performance quantitative pipeline
 │   • Alpaca Market Data Provider (OCC Symbol Encoding)       │
 └──────────────────────────────┬──────────────────────────────┘
 │
-┌──────────────────┼──────────────────┐
-▼                  ▼                  ▼
-[Black-Scholes]   [Binomial Tree]    [Monte Carlo]
-(European Closed) (American CRR/JR)  (Stochastic GBM)
+            ┌──────────────────┼──────────────────┐
+            ▼                  ▼                  ▼
+            [Black-Scholes]   [Binomial Tree]    [Monte Carlo]
+            (European Closed) (American CRR/JR)  (Stochastic GBM)
 
 ```
 
@@ -186,6 +186,4 @@ Open [http://localhost:3000](http://localhost:3000) in your browser to access th
 
 ## Author:
 
-**Amritanshu Kumar Singh**
-Quantitative Researcher 
-```
+**[Amritanshu Kumar Singh](https://github.com/amrit1610-fin)** | Quantitative Researcher 
