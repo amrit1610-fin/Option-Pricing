@@ -88,10 +88,10 @@ class MarketData:
             time_to_expiry = max(days_to_expiry / 365.0, 0.001)
 
             # --- 5. EXERCISE STYLE ---
-            is_european = clean_ticker in ["SPX", "NDX", "RUT", "VIX"]
+            is_european = clean_ticker in ["SPX", "SPXW", "XSP", "NDX", "RUT", "VIX", "DJX", "XEO", "MNX"]
             exercise_style = "european" if is_european else "american"
 
-            return MarketDataModel(
+            return MarketDataLayout(
                 ticker=clean_ticker,
                 spot_price=spot_price,
                 strike_price=strike_price,
