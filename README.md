@@ -1,12 +1,14 @@
 # Quantitative Option Pricing & Risk Analytics Terminal
 
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![Next.js](https://img.shields.io/badge/Frontend-Next.js%2014-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
 [![Deployment](https://img.shields.io/badge/Deployed-Vercel%20%26%20Render-blue?style=flat-square)](https://vercel.com)
-[![License](https://img.shields.io/badge/License-MIT-amber?style=flat-square)](LICENSE)
+
 
 An institutional-grade quantitative finance web terminal inspired by Bloomberg DES/PRC interfaces. The engine prices European and American equity/index options across multiple mathematical frameworks, solves for implied volatility numerically, and calculates full first- and second-order risk sensitivities (Greeks).
 
+**Visit** : https://option-pricing-terminal.vercel.app/
 ---
 
 ## Architecture Overview
@@ -17,19 +19,18 @@ The system is architected as a decoupled, high-performance quantitative pipeline
 ```
 
 ┌─────────────────────────────────────────────────────────────┐
-│                    Next.js (Vercel)                        │
+│                    Next.js (Vercel)                         │
 │   • Bloomberg CRT UI Theme (Tailwind CSS)                   │
-│   • Dynamic Execution Logging System                       │
-│   • Interactive Plotly Financial Visualizations            │
+│   • Dynamic Execution Logging System                        │
+│   • Interactive Plotly Financial Visualizations             │
 └──────────────────────────────┬──────────────────────────────┘
-│ HTTPS / JSON API
+                               │ HTTPS / JSON API
 ┌──────────────────────────────▼──────────────────────────────┐
-│                    FastAPI (Render)                        │
+│                    FastAPI (Render)                         │
 │   • Auto-Routing Valuation Engine                           │
 │   • Numerical Greeks Engine (Bump & Revalue)                │
 │   • Alpaca Market Data Provider (OCC Symbol Encoding)       │
 └──────────────────────────────┬──────────────────────────────┘
-│
             ┌──────────────────┼──────────────────┐
             ▼                  ▼                  ▼
             [Black-Scholes]   [Binomial Tree]    [Monte Carlo]
